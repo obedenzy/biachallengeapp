@@ -189,7 +189,7 @@ import Head from 'next/head';
       ];
 
       return (
-        <div className="container">
+        <div>
           <Head>
             <title>BIA GROWTH MINDSET TRANSFORMATIONAL CHALLENGE 2.0</title>
             <link
@@ -279,6 +279,7 @@ import Head from 'next/head';
                       name={field.name}
                       id={`${field.name}Yes`}
                       value="yes"
+                      checked={answers[field.name] === 'yes'}
                       onChange={(e) => {
                         setAnswers({ ...answers, [field.name]: e.target.value });
                         setFormErrors({ ...formErrors, [field.name]: '' });
@@ -296,6 +297,7 @@ import Head from 'next/head';
                       name={field.name}
                       id={`${field.name}No`}
                       value="no"
+                      checked={answers[field.name] === 'no'}
                       onChange={(e) => {
                         setAnswers({ ...answers, [field.name]: e.target.value });
                         setFormErrors({ ...formErrors, [field.name]: '' });
