@@ -32,7 +32,11 @@ import Head from 'next/head';
           if (error) {
             console.error('Error fetching full names:', error);
           } else {
-            setFullNames(data.map((record) => record.full_name));
+            // Sort and remove duplicates
+            const uniqueSortedNames = [
+              ...new Set(data.map((record) => record.full_name).sort((a, b) => a.localeCompare(b))),
+            ];
+            setFullNames(uniqueSortedNames);
           }
         };
 
@@ -43,7 +47,7 @@ import Head from 'next/head';
         const updateDateTime = () => {
           const now = new Date();
           const etFormatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'America/New_York',
+            timeZone: 'America/Los_Angeles',
             year: 'numeric',
             month: 'long',
             day: 'numeric',
@@ -189,7 +193,7 @@ import Head from 'next/head';
       ];
 
       return (
-        <div>
+        <div className="container">
           <Head>
             <title>BIA GROWTH MINDSET TRANSFORMATIONAL CHALLENGE 2.0</title>
             <link
@@ -229,7 +233,7 @@ import Head from 'next/head';
           </div>
           <div className="text-center mb-3">
             <p className="fw-bold" style={{ color: 'red' }}>
-              Current Date and Time (Eastern Time): {currentDateTime}
+              Current Date and Time (Pacific Time): {currentDateTime}
             </p>
           </div>
           {isSubmitted && (
@@ -242,23 +246,25 @@ import Head from 'next/head';
               <label htmlFor="fullName" className="form-label question-label fw-bold">
                 Select Full Name
               </label>
-              <select
+              <input
+                type="text"
+                className={`form-control ${formErrors.selectedFullName ? 'is-invalid' : ''}`}
                 id="fullName"
-                className={`form-select ${formErrors.selectedFullName ? 'is-invalid' : ''}`}
+                list="fullNameOptions"
                 value={selectedFullName}
                 onChange={(e) => {
                   setSelectedFullName(e.target.value);
                   setFormErrors({ ...formErrors, selectedFullName: '' });
                   handleInputChange();
                 }}
-              >
-                <option value="">Select Full Name</option>
+                placeholder="Type to search..."
+              />
+              <datalist id="fullNameOptions">
                 {fullNames.map((fullName) => (
-                  <option key={fullName} value={fullName}>
-                    {fullName}
-                  </option>
+                  <option key={fullName} value={fullName} />
                 ))}
-              </select>
+              </datalist>
+
               {formErrors.selectedFullName && (
                 <div className="invalid-feedback">
                   {formErrors.selectedFullName}
