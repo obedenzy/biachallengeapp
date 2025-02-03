@@ -1,6 +1,7 @@
 import Head from 'next/head';
     import { useState, useEffect } from 'react';
     import { createClient } from '@supabase/supabase-js';
+    import Link from 'next/link';
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -22,6 +23,7 @@ import Head from 'next/head';
       const [formErrors, setFormErrors] = useState({});
       const [currentDateTime, setCurrentDateTime] = useState('');
       const [isSubmitted, setIsSubmitted] = useState(false);
+      const [searchTerm, setSearchTerm] = useState('');
 
       useEffect(() => {
         const fetchFullNames = async () => {
@@ -81,7 +83,7 @@ import Head from 'next/head';
 
       const handleSubmit = async (event) => {
         event.preventDefault();
-
+        setIsSubmitted(false);
         if (!validateForm()) {
           console.error('Form validation failed');
           return;
@@ -89,18 +91,8 @@ import Head from 'next/head';
 
         const today = new Date().toISOString().split('T')[0];
 
-        const { data: existingRecords, error: existingError } = await supabase
-          .from('biaformtable')
-          .select('id')
-          .eq('full_name', selectedFullName)
-          .gte('created_at', today);
-
-        if (existingError) {
-          console.error('Error checking for existing record:', existingError);
-          return;
-        }
-
         const mappedData = {
+          formType: 'daily',
           full_name: selectedFullName,
           hydration_goals: answers.hydrationGoals,
           diet_nutrition: answers.dietNutrition,
@@ -108,50 +100,59 @@ import Head from 'next/head';
           daily_progress_photo: answers.dailyProgressPhoto,
           mindfulness_practice: answers.mindfulnessPractice,
           abstinence: answers.abstinence,
-          connection_networking: answers.connectionNetworking
+          connection_networking: answers.connectionNetworking,
+          created_at: today
         };
 
-        if (existingRecords && existingRecords.length > 0) {
-          const existingRecordId = existingRecords[0].id;
-          const { error: updateError } = await supabase
-            .from('biaformtable')
-            .update(mappedData)
-            .eq('id', existingRecordId);
+        try {
+          const response = await fetch('/api/submit-form', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(mappedData),
+          });
 
-          if (updateError) {
-            console.error('Error updating record:', updateError);
+          if (response.ok) {
+            console.log('Form submitted successfully');
+            // Reset the form fields and errors
+            setSelectedFullName('');
+            setAnswers({
+              hydrationGoals: '',
+              dietNutrition: '',
+              studyRead: '',
+              dailyProgressPhoto: '',
+              mindfulnessPractice: '',
+              abstinence: '',
+              connectionNetworking: ''
+            });
+            setFormErrors({});
+            setIsSubmitted(true);
           } else {
-            console.log('Record updated successfully');
+            const errorData = await response.json();
+            console.error('Form submission error:', errorData);
+            setFormErrors({ submit: 'Failed to submit form. Please try again.' });
           }
-        } else {
-          const { error: insertError } = await supabase
-            .from('biaformtable')
-            .insert([mappedData]);
-
-          if (insertError) {
-            console.error('Error inserting record:', insertError);
-          } else {
-            console.log('Record inserted successfully');
-          }
+        } catch (error) {
+          console.error('Network error on form submission:', error);
+          setFormErrors({ submit: 'Network error. Please check your connection.' });
         }
-
-        // Reset the form fields and errors
-        setSelectedFullName('');
-        setAnswers({
-          hydrationGoals: '',
-          dietNutrition: '',
-          studyRead: '',
-          dailyProgressPhoto: '',
-          mindfulnessPractice: '',
-          abstinence: '',
-          connectionNetworking: ''
-        });
-        setFormErrors({});
-        setIsSubmitted(true);
       };
 
       const handleInputChange = () => {
         setIsSubmitted(false);
+      };
+
+      const handleSearchChange = (event) => {
+        const newSearchTerm = event.target.value;
+        setSearchTerm(newSearchTerm);
+      
+        // Only set selectedFullName if the typed value matches a name in fullNames
+        if (fullNames.includes(newSearchTerm)) {
+          setSelectedFullName(newSearchTerm);
+        } else {
+          setSelectedFullName('');
+        }
       };
 
       const questions = [
@@ -243,6 +244,12 @@ import Head from 'next/head';
           )}
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
+              <p>
+                Don't have an account?{' '}
+                <Link href="/register">
+                  Register here
+                </Link>
+              </p>
               <label htmlFor="fullName" className="form-label question-label fw-bold">
                 Select Full Name
               </label>
@@ -253,8 +260,14 @@ import Head from 'next/head';
                 list="fullNameOptions"
                 value={selectedFullName}
                 onChange={(e) => {
-                  setSelectedFullName(e.target.value);
-                  setFormErrors({ ...formErrors, selectedFullName: '' });
+                  const newSearchTerm = e.target.value;
+                  setSearchTerm(newSearchTerm);
+                  // Set selectedFullName only if the typed value matches a name in fullNames
+                  if (fullNames.includes(newSearchTerm)) {
+                    setSelectedFullName(newSearchTerm);
+                  } else {
+                    setSelectedFullName('');
+                  }
                   handleInputChange();
                 }}
                 placeholder="Type to search..."
@@ -264,7 +277,6 @@ import Head from 'next/head';
                   <option key={fullName} value={fullName} />
                 ))}
               </datalist>
-
               {formErrors.selectedFullName && (
                 <div className="invalid-feedback">
                   {formErrors.selectedFullName}
